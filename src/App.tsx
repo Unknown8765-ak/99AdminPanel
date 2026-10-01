@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import AdminLayout from "./components/layout/AdminLayout/AdminLayout";
 import Login from "./pages/auth/Login";
@@ -34,8 +34,8 @@ function App() {
     />
 
       <Routes>
-
-        <Route path="/admin/login" element={<Login />} />
+        <Route path="/" element={<Navigate to="/admin/dashboard" replace />}/>
+        <Route path="/admin/login" element={<Login />} /> 
         <Route element={<ProtectedRoute />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin/dashboard" element={<Dashboard />} />
