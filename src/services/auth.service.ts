@@ -7,6 +7,7 @@ import type {
 } from "../types/auth.types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
+console.log(API_BASE_URL)
 
 const request = async <T>(
   endpoint: string,
