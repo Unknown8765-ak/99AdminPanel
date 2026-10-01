@@ -25,10 +25,10 @@ const request = async <T>(
 
   const responseText = await response.text();
 
-  // console.log(
-  //   "API URL:",
-  //   `${API_BASE_URL}${endpoint}`
-  // );
+  console.log(
+    "API URL:",
+    `${API_BASE_URL}${endpoint}`
+  );
 
   // console.log("Status:", response.status);
 
