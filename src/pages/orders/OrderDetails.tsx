@@ -160,7 +160,7 @@ const OrderDetails = () => {
   const [success, setSuccess] = useState("");
   const [exchangeRequests, setExchangeRequests] =
   useState<any[]>([]);
-  const [exchangeLoading, setExchangeLoading] =useState(false);
+  const [, setExchangeLoading] =useState(false);
   const [exchangeUpdating, setExchangeUpdating] =useState(false);
   const [exchangeSuccess, setExchangeSuccess] =useState("");
   const [exchangeError, setExchangeError] =useState("");
