@@ -5,12 +5,14 @@ import type {
   OrderApiResponse,
   UpdateOrderStatusPayload,
 } from "../types/order.types";
+import type { ExchangeStatus } from "../types/exchange.type";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 /**
  * GET ALL ADMIN ORDERS
  */
+
 export const getAllOrdersAPI = async (
   {
     page = 1,
@@ -117,4 +119,55 @@ export const updateOrderStatusAPI = async (
   }
 
   return data;
+};
+
+export const updateExchangeStatus = async (
+  exchangeId: string,
+  data: {
+    status: ExchangeStatus;
+    adminNote?: string;
+    rejectedReason?: string;
+  }
+) => {
+  const response = await fetch(
+    `${API_URL}/admin/orders/${exchangeId}/status`,
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result?.message || "Failed to update exchange status"
+    );
+  }
+
+  return result;
+};
+export const getAllExchangeRequests = async () => {
+  const response = await fetch(
+    `${API_URL}/admin/orders/exchanges`,
+    {
+      method: "GET",
+      credentials: "include",
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result?.message ||
+        "Failed to fetch exchange requests"
+    );
+  }
+
+  return result;
 };

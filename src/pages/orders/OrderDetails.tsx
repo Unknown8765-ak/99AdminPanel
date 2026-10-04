@@ -12,6 +12,8 @@ import {
 import {
   getAdminOrderByIdAPI,
   updateOrderStatusAPI,
+  getAllExchangeRequests,
+  updateExchangeStatus,
 } from "../../services/order.service";
 
 import type {
@@ -56,7 +58,39 @@ const statusOptions: {
     value: "returned",
   },
 ];
-
+const exchangeStatusOptions: {
+  label: string;
+  value: any;
+}[] = [
+  {
+    label: "Requested",
+    value: "requested",
+  },
+  {
+    label: "Approved",
+    value: "approved",
+  },
+  {
+    label: "Rejected",
+    value: "rejected",
+  },
+  {
+    label: "Pickup Pending",
+    value: "pickup_pending",
+  },
+  {
+    label: "Picked Up",
+    value: "picked_up",
+  },
+  {
+    label: "Replacement Shipped",
+    value: "replacement_shipped",
+  },
+  {
+    label: "Completed",
+    value: "completed",
+  },
+];
 const formatStatus = (status: string) => {
   return status
     .split("_")
@@ -114,26 +148,28 @@ const OrderDetails = () => {
   const { orderId } = useParams<{
     orderId: string;
   }>();
-
+  console.log("OrderDetails orderID",orderId)
   const navigate = useNavigate();
 
-  const [order, setOrder] = useState<Order | null>(
-    null
-  );
-
-  const [selectedStatus, setSelectedStatus] =
-    useState<OrderStatus>("pending");
-
+  const [order, setOrder] = useState<Order | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<OrderStatus>("pending");
   const [note, setNote] = useState("");
-
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [exchangeRequests, setExchangeRequests] =
+  useState<any[]>([]);
+  const [exchangeLoading, setExchangeLoading] =useState(false);
+  const [exchangeUpdating, setExchangeUpdating] =useState(false);
+  const [exchangeSuccess, setExchangeSuccess] =useState("");
+  const [exchangeError, setExchangeError] =useState("");
+  const [exchangeNotes, setExchangeNotes] =useState<Record<string, string>>({});
+  const [exchangeRejectedReasons, setExchangeRejectedReasons] =useState<Record<string, string>>({});
 
   const fetchOrder = useCallback(async () => {
     if (!orderId) {
-      setError("Invalid order ID");
+      setError("Invalid order ID hai");
       setLoading(false);
       return;
     }
@@ -158,10 +194,48 @@ const OrderDetails = () => {
       setLoading(false);
     }
   }, [orderId]);
+  const fetchExchangeRequest = useCallback(async () => {
+  if (!orderId) return;
+
+  try {
+    setExchangeLoading(true);
+
+    const result = await getAllExchangeRequests();
+
+    console.log("All exchange requests:", result);
+    const exchanges = result?.data || [];
+    const currentExchanges = exchanges.filter(
+      (exchange: any) => {
+        const exchangeOrderId =
+          typeof exchange.order === "object"
+            ? exchange.order?._id
+            : exchange.order;
+        return exchangeOrderId === orderId;
+      }
+    );
+
+    console.log(
+      "Current order exchange requests:",
+      currentExchanges
+    );
+
+    setExchangeRequests(currentExchanges);
+  } catch (error) {
+    console.error(
+      "Failed to fetch exchange requests:",
+      error
+    );
+
+    setExchangeRequests([]);
+  } finally {
+    setExchangeLoading(false);
+  }
+}, [orderId]);
 
   useEffect(() => {
-    fetchOrder();
-  }, [fetchOrder]);
+  fetchOrder();
+  fetchExchangeRequest();
+}, [fetchOrder, fetchExchangeRequest]);
 
   const handleStatusUpdate = async () => {
     if (!orderId || !order) return;
@@ -200,6 +274,41 @@ const OrderDetails = () => {
       setUpdating(false);
     }
   };
+  const handleExchangeStatusUpdate = async (
+  exchangeId: string,
+  status: any,
+  adminNote?: string,
+  rejectedReason?: string
+) => {
+  try {
+    setExchangeUpdating(true);
+    setExchangeError("");
+    setExchangeSuccess("");
+
+    await updateExchangeStatus(exchangeId, {
+      status,
+      adminNote: adminNote?.trim() || undefined,
+      rejectedReason:
+        rejectedReason?.trim() || undefined,
+    });
+
+    setExchangeSuccess(
+      "Exchange status updated successfully."
+    );
+
+    // Updated exchange data dobara fetch karenge
+    await fetchExchangeRequest();
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to update exchange status";
+
+    setExchangeError(message);
+  } finally {
+    setExchangeUpdating(false);
+  }
+};
 
   if (loading) {
     return (
@@ -441,6 +550,212 @@ const OrderDetails = () => {
               </div>
             </div>
           </div>
+          {exchangeRequests.length > 0 && (
+  <div className="rounded-xl bg-white p-5 shadow-sm">
+    <div className="mb-4 flex items-center justify-between">
+      <div>
+        <h2 className="font-semibold text-slate-800">
+          Exchange Requests
+        </h2>
+
+        <p className="mt-1 text-xs text-gray-400">
+          {exchangeRequests.length} exchange request
+          {exchangeRequests.length > 1 ? "s" : ""}
+        </p>
+      </div>
+    </div>
+
+    <div className="space-y-4">
+          {exchangeError && (
+                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {exchangeError}
+                </div>
+          )}
+
+          {exchangeSuccess && (
+            <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-600">
+              {exchangeSuccess}
+            </div>
+          )}
+            
+          {exchangeRequests.map((exchange: any) => (
+                  <div
+                    key={exchange._id}
+                    className="rounded-lg border border-gray-200 p-4"
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs text-gray-400">
+                          Exchange ID
+                        </p>
+
+                        <p className="mt-1 text-sm font-medium text-slate-800">
+                          {exchange._id}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-2">
+                          <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-700">
+                            {formatStatus(exchange.status)}
+                          </span>
+
+                          <select
+                            value={exchange.status}
+                            disabled={exchangeUpdating}
+                            onChange={(e) =>
+                              handleExchangeStatusUpdate(
+                                exchange._id,
+                                e.target.value as any
+                              )
+                            }
+                            className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                          
+                            {exchangeStatusOptions.map((option) => (
+                              <option
+                                key={option.value}
+                                value={option.value}
+                              >
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                    </div>
+
+                    {/* Product */}
+                    <div className="mt-4 rounded-lg bg-gray-50 p-3">
+                      <p className="text-xs text-gray-400">
+                        Product
+                      </p>
+
+                      <p className="mt-1 font-medium text-slate-800">
+                        {typeof exchange.product === "object"
+                          ? exchange.product?.name
+                          : exchange.product}
+                      </p>
+
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+                        <span>
+                          Quantity: {exchange.quantity}
+                        </span>
+
+                        <span>
+                          Reason:{" "}
+                          {formatStatus(exchange.reason)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Requested Date */}
+                    <div className="mt-3">
+                      <p className="text-xs text-gray-400">
+                        Requested On
+                      </p>
+
+                      <p className="mt-1 text-sm text-slate-700">
+                        {formatDate(exchange.createdAt)}
+                      </p>
+                    </div>
+
+                    {/* Admin Note */}
+                    {exchange.adminNote && (
+                      <div className="mt-3">
+                        <p className="text-xs text-gray-400">
+                          Admin Note
+                        </p>
+
+                        <p className="mt-1 text-sm text-gray-600">
+                          {exchange.adminNote}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Rejected Reason */}
+                    {exchange.rejectedReason && (
+                      <div className="mt-3 rounded-lg bg-red-50 p-3">
+                        <p className="text-xs font-medium text-red-500">
+                          Rejected Reason
+                        </p>
+
+                        <p className="mt-1 text-sm text-red-600">
+                          {exchange.rejectedReason}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="mt-4 space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">
+                    Admin Note
+                  </label>
+
+              <textarea
+                  value={exchangeNotes[exchange._id] ?? exchange.adminNote ?? ""}
+                  onChange={(e) => {
+                    setExchangeNotes((prev) => ({
+                      ...prev,
+                      [exchange._id]: e.target.value,
+                    }));
+                  }}
+                  placeholder="Add admin note..."
+                  rows={2}
+                  className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+
+            {exchange.status === "rejected" && (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-red-500">
+                  Rejected Reason
+                </label>
+
+                <textarea
+                  value={
+                    exchangeRejectedReasons[exchange._id] ??
+                    exchange.rejectedReason ??
+                    ""
+                  }
+                  onChange={(e) => {
+                    setExchangeRejectedReasons((prev) => ({
+                      ...prev,
+                      [exchange._id]: e.target.value,
+                    }));
+                  }}
+                  placeholder="Enter rejected reason..."
+                  rows={2}
+                  className="w-full resize-none rounded-lg border border-red-200 px-3 py-2 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                />
+                    </div>
+                    )}
+                    </div>
+                    <button
+                        onClick={() =>
+                          handleExchangeStatusUpdate(
+                            exchange._id,
+                            exchange.status as any,
+                            exchangeNotes[exchange._id] ??
+                              exchange.adminNote ??
+                              "",
+                            exchangeRejectedReasons[exchange._id] ??
+                              exchange.rejectedReason ??
+                              ""
+                          )
+                        }
+          disabled={exchangeUpdating}
+          className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {exchangeUpdating
+            ? "Updating Exchange..."
+            : "Update Exchange"}
+        </button>
+                  </div>
+              ))}
+              
+            </div>
+          </div>
+        )}
         </div>
 
         {/* Right */}
